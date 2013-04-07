@@ -29,27 +29,31 @@ function browserifyWatcher (jsfiles) {
       if (seen[file]) return
       seen[file] = true
       fs.watch(file, function(e) {
-        log('`'+ e + '` event on',  file)
-        b.bundle(onBundle)
+        debug('`'+ e + '` event on',  file)
+        bundle(b)
       })
     })
 
     // force-regen on startup
-    b.bundle(onBundle)
+    bundle(b)
 
+    function bundle(b) {
+      b.bundle(onBundle).on('error', onErr)
+    }
     function onBundle(err, src) {
       if (err) log(err.stack)
       fs.writeFile(output, src, 'utf8', onWrite)
     }
     function onWrite (err) {
       if (err) log(err.stack)
-      log('Updated bundle at', new Date().toISOString(), '-', prettypath)
+      log(new Date().toISOString(), 'updated', prettypath)
     }
-    b.on('syntaxError', function(err) {
-      log(err.toString())
-    })
   })
   return bundles;
+}
+
+function onErr(err) {
+  log(err.stack)
 }
 
 function log() {
