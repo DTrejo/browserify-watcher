@@ -22,26 +22,37 @@ function browserifyWatcher (jsfiles) {
     var output = path.join(path.dirname(mainjs), newname)
     var prettypath = path.relative(path.dirname(module.parent.filename), output)
 
+    // regen on change
+    // TODO detect renames
+    var seen = {}
+    b.on('file', function(file, id, parent) {
+      if (seen[file]) return
+      seen[file] = true
+      fs.watch(file, function(e) {
+        log('`'+ e + '` event on',  file)
+        b.bundle(onBundle)
+      })
+    })
+
     // force-regen on startup
     b.bundle(onBundle)
 
-    // regen on change
-    // TODO detect renames
-    fs.watch(mainjs, function(e, filename) {
-      b.bundle(onBundle)
-    })
-
     function onBundle(err, src) {
-      if (err) console.log('browserify-watcher:', err.stack)
+      if (err) log(err.stack)
       fs.writeFile(output, src, 'utf8', onWrite)
     }
     function onWrite (err) {
-      if (err) console.log('browserify-watcher:', err.stack)
-      console.log('Updated bundle -', new Date().toISOString(), '-', prettypath)
+      if (err) log(err.stack)
+      log('Updated bundle at', new Date().toISOString(), '-', prettypath)
     }
     b.on('syntaxError', function(err) {
-      console.log('browserify-watcher:', err.toString())
+      log(err.toString())
     })
   })
   return bundles;
+}
+
+function log() {
+  var args = [].slice.call(arguments)
+  console.log.apply(console, ['browserify-watcher:'].concat(args))
 }
